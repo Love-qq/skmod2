@@ -402,6 +402,15 @@ namespace CastSprint::Diagnostics
         return "?";
     }
 
+    bool CastWindowActive()
+    {
+        auto* p = RE::PlayerCharacter::GetSingleton();
+        if (!p) return false;
+        const bool castActive = CasterState(p, RE::MagicSystem::CastingSource::kLeftHand) >= 1 ||
+                                CasterState(p, RE::MagicSystem::CastingSource::kRightHand) >= 1;
+        return castActive || (NowMs() - g_lastCastMs) < 2000;
+    }
+
     void LogCastingStateIfThrottled(RE::Actor*) {}
 
     void TryRegisterAnimEventSink()
