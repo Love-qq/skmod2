@@ -27,6 +27,9 @@
 #include <deque>
 #include <filesystem>
 #include <mutex>
+#include <optional>
+#include <type_traits>
+#include <utility>
 #include <string>
 
 namespace CastSprint::Diagnostics
@@ -335,6 +338,50 @@ namespace CastSprint::Diagnostics
             }
             s0 = a0; s1 = a1;
         }
+        // ── v5: keep the sprint alive through a cast ──────────────────────
+        // The engine switches the movement type to NPCMagicCasting when a cast starts,
+        // and that also clears the sprint flag. Keep a snapshot of the NPCSprinting
+        // movement type taken on the last non-cast frame while sprinting. During a cast,
+        // if the type has been switched away from NPCSprinting, restore the snapshot and
+        // re-send sSprintStart once per cast.
+        using MovementTypeT = std::remove_cvref_t<decltype(std::declval<RE::HighProcessData&>().currentMovementType)>;
+        std::optional<MovementTypeT> g_sprintSnapshot;
+        bool g_restartedThisCast = false;
+        std::uint64_t g_fixRestores = 0;
+
+        void ApplyCastSprintFix(RE::PlayerCharacter* p)
+        {
+            if (!p->currentProcess || !p->currentProcess->high) return;
+            auto& mt = p->currentProcess->high->currentMovementType;
+            const char* cName = mt.typeName.c_str();
+            const std::string name = cName ? cName : "";
+
+            const bool casting = CasterState(p, RE::MagicSystem::CastingSource::kLeftHand) >= 1 ||
+                                 CasterState(p, RE::MagicSystem::CastingSource::kRightHand) >= 1;
+
+            if (!casting) {
+                g_restartedThisCast = false;
+                if (name == "NPCSprinting") {
+                    g_sprintSnapshot = mt;
+                } else {
+                    g_sprintSnapshot.reset();   // not sprinting before this frame: nothing to restore
+                }
+                return;
+            }
+
+            if (!g_sprintSnapshot || name == "NPCSprinting") return;
+
+            mt = *g_sprintSnapshot;
+            ++g_fixRestores;
+            logger::info("[Fix t={}ms] restored NPCSprinting during cast (was {}, restores={})",
+                         NowMs(), name, g_fixRestores);
+
+            if (!g_restartedThisCast) {
+                g_restartedThisCast = true;
+                const bool ok = p->NotifyAnimationGraph("sSprintStart");
+                logger::info("[Fix t={}ms] sent sSprintStart (ok={})", NowMs(), ok);
+            }
+        }
     }  // namespace
 
     // ── public API ─────────────────────────────────────────────────────────
@@ -396,6 +443,9 @@ namespace CastSprint::Diagnostics
                 ArmHw(mtAddr, stateAddr);
             }
         }
+
+        // 2b) v5 sprint-through-cast fix (main thread only)
+        ApplyCastSprintFix(player);
 
         // 3) change detector
         static bool  s_have = false;

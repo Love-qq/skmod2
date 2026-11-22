@@ -47,7 +47,7 @@ namespace
         switch (a_msg->type) {
             case SKSE::MessagingInterface::kDataLoaded:
                 logger::info("========================================");
-                logger::info("DIAG BUILD v4");
+                logger::info("DIAG BUILD v5 (CastSprint_v5)");
                 logger::info("========================================");
                 logger::info("[Main] kDataLoaded received – installing hooks.");
                 CastSprint::InstallHooks();
