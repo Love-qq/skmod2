@@ -18,6 +18,7 @@ jobs:
           cmake -S . -B build -A x64 `
             -DCMAKE_TOOLCHAIN_FILE="$tc" `
             -DVCPKG_MANIFEST_MODE=ON `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
