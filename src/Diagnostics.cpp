@@ -355,8 +355,11 @@ namespace CastSprint::Diagnostics
             const char* cName = mt.typeName.c_str();
             const std::string name = cName ? cName : "";
 
+            // v7: NPCMagic is the state right after a cast ends; treat it as casting too,
+            // otherwise the snapshot is dropped and sprint is lost in that window.
             const bool casting = CasterState(p, RE::MagicSystem::CastingSource::kLeftHand) >= 1 ||
-                                 CasterState(p, RE::MagicSystem::CastingSource::kRightHand) >= 1;
+                                 CasterState(p, RE::MagicSystem::CastingSource::kRightHand) >= 1 ||
+                                 name == "NPCMagicCasting" || name == "NPCMagic";
 
             if (!casting) {
                 if (name == "NPCSprinting") {
