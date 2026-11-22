@@ -1,0 +1,164 @@
+﻿================================================================================
+                    ИНФОРМАЦИЯ О ПЛАГИНЕ CASTSPRINT И ОКРУЖЕНИИ
+================================================================================
+
+1. ИСПОЛНЯЕМЫЙ ФАЙЛ SKYRIM SE
+--------------------------------------------------------------------------------
+Путь в сборке:         D:\Games\sky\OmenRim\OmenRim 6\Stock Game\SkyrimSE.exe
+Точная версия (File):  1.5.97.0
+Версия (Product):      1.5.97.0
+Размер в байтах:       34769792 байт (33.15 МБ)
+Контрольная сумма SHA256:
+5666E1BDDD01BCAB31ECF11691EF1A3F22E1541AF79F2BC0E55318533CFE5D12
+
+
+2. ADDRESS LIBRARY ДЛЯ 1.5.97
+--------------------------------------------------------------------------------
+Имя файла:             version-1-5-97-0.bin
+Исходное расположение: D:\Games\sky\OmenRim\OmenRim 6\MO\mods\[CCore] - Address Library\SKSE\Plugins\version-1-5-97-0.bin
+Размер в байтах:       1490796 байт (1.42 МБ)
+Контрольная сумма SHA256:
+1D7530D001139CA58F462EA0210A8055868159057BA8B5EBC624FC5E9C4F5E9A
+
+
+3. COMMONLIBSSE-NG
+--------------------------------------------------------------------------------
+Путь:                  C:\dev\CommonLibSSE-NG
+Версия:                CommonLibSSE-NG 3.7.0 (vcpkg.json: version-semver: 3.7.0)
+Git Commit:            b93280e832f263dbef44e44cbe2936622a02f91a
+Дата коммита:          2024-09-03 19:57:38 -0700
+Заголовок коммита:     Fix light-mod count (#97)
+
+
+4. КОНФИГУРАЦИЯ И СБОРКА ПЛАГИНА (CMAKE)
+--------------------------------------------------------------------------------
+Компилятор:            MSVC 19.44.35219 (Visual Studio 2022 v143, x64)
+CMake:                 3.31.1 (C:\dev\tools\cmake\bin\cmake.exe)
+Runtime Library:       /MT (MultiThreaded, статическая линковка CRT)
+Стандарт C++:          C++23
+
+Команда конфигурации CMake:
+$env:PATH = "C:\dev\tools\cmake\bin;$env:PATH"
+cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET="x64-windows-static"
+
+Команда сборки:
+cmake --build build --config Release
+
+Зависимости vcpkg (x64-windows-static):
+- simpleini (vcpkg classic install simpleini:x64-windows-static)
+- CommonLibSSE-NG подключается напрямую через add_subdirectory("C:/dev/CommonLibSSE-NG" CommonLibSSE EXCLUDE_FROM_ALL)
+
+
+5. РЕГИСТРАЦИЯ ХУКОВ В ИСХОДНОМ КОДЕ
+--------------------------------------------------------------------------------
+Все хуки устанавливаются через SKSE::GetTrampoline().write_call<5> на этапе kDataLoaded (InstallHooks() вызывается из OnSKSEMessage в main.cpp).
+
+[Хук 1: Hook_ShouldStopSprintOnAttack]
+- Назначение:           Предотвращение сброса спринта при начале зажатия/каста заклинания
+- Исходный файл:        src/SprintPatch.cpp, строка 128 (релокация на строке 126)
+- Address Library ID:   41260
+- Смещение:             +0x5D
+- RVA в 1.5.97:         0x70508D (исходно: CALL 0x608800 — проверка IsSprinting)
+- Перехватывает вызов:  g_originalIsSprinting (detail::IsSprinting_t)
+
+[Хук 2: Hook_CheckCanSprint]
+- Назначение:           Разрешение входа в спринт, когда заклинание уже заряжается/удерживается
+- Исходный файл:        src/SprintPatch.cpp, строка 134 (релокация на строке 132)
+- Address Library ID:   41358
+- Смещение:             +0x188
+- RVA в 1.5.97:         0x709708 (исходно: CALL 0x632230 — проверка CanSprint)
+- Перехватывает вызов:  g_originalCheckCanSprint (detail::CheckCanSprint_t)
+
+[Хук 3: Hook_SetMovementType_LH]
+- Назначение:           Устранение замедления бега/спринта при касте левой рукой
+- Исходный файл:        src/MovementPatch.cpp, строка 80 (релокация на строке 73)
+- Address Library ID:   33570
+- Смещение:             +0xA7
+- RVA в 1.5.97:         0x549EC7 (исходно: CALL 0x6071A0 — SetMovementType)
+- Перехватывает вызов:  g_originalSetMovementType_LH (detail::SetMovementType_t)
+
+[Хук 4: Hook_SetMovementType_RH]
+- Назначение:           Устранение замедления бега/спринта при касте правой рукой
+- Исходный файл:        src/MovementPatch.cpp, строка 83 (релокация на строке 76)
+- Address Library ID:   34298
+- Смещение:             +0xA7
+- RVA в 1.5.97:         0x568397 (исходно: CALL 0x6071A0 — SetMovementType)
+- Перехватывает вызов:  g_originalSetMovementType_RH (detail::SetMovementType_t)
+
+[Диагностический слушатель графа анимаций: AnimEventLogger]
+- Назначение:           Логирование событий графа анимаций (SprintStart, SprintStop, attackStart, CastStop и т.д.)
+- Исходный файл:        src/Diagnostics.cpp, строка 75 (вызов TryRegisterAnimEventSink)
+- Вызывается из:        src/main.cpp, строка 59 (OnSKSEMessage: kPostLoadGame и kNewGame)
+- Метод регистрации:    player->AddAnimationGraphEventSink(&g_animEventLogger)
+
+
+6. СПИСОК УСТАНОВЛЕННЫХ МОДОВ (АНИМАЦИИ, ДВИЖЕНИЕ, БОЙ)
+--------------------------------------------------------------------------------
+Источник: профиль 'Main Version' в D:\Games\sky\OmenRim\OmenRim 6\MO\profiles\Main Version\modlist.txt
+(Ниже перечислены активные ключевые моды боевой системы, поведения и анимаций):
+
+-- Анимационные и Behavior движки:
+* Pandora Behaviour Engine
+* Pandora_OUT
+* [CCore] - Open Animation Replacer (OAR)
+* [CCore] - Open Animation Replacer - Math Plugin
+* [CCore] - Open Animation Replacer - Dialogue Plugin
+* [CCore] - Open Animation Replacer - IED Conditions
+* [CCore] - Animation Motion Revolution (AMR)
+* AMR_CastRegen_v
+* [CCore] - Behavior Data Injector
+* [CCore] - Dynamic Key Action Framework NG
+* [CCore] - Dynamic Animation Casting
+* [CCore] - Dynamic Animation Casting - NG
+* [CCore] - Paired Animation Improvements
+* [CCore] - Animation Queue Fix
+* [CCore] - Sprint Sneak Movement Speed Fix
+* [CCore] - No Opposite Gender Animations NG
+* [CScript] - MQ105SprintTrigger Script Fix
+
+-- Боевая система, атаки и спринт:
+* [Combat] - ADXP
+* [Combat] - ADXP Bug Fixes
+* [Combat] - ADXP MCO Attack Data Transition Fix (ADTF)
+* [Combat] - ADXP Sprint Attacks
+* [Combat] - Project Gap Close
+* [Combat] - Project Gap Close ADXP Sprint Attacks
+* [Combat] - Dynamic Sprint
+* [Combat] - True Directional Movement - Modernized Third Person Gameplay
+* [Combat] - True Directional Movement - Simpler Dragon Targeting
+* [Combat] - SkyParkour v3 - Procedural Parkour and Climbing Framework (SPPF)
+* [Combat] - Precision - Accurate Melee Collisions
+* [Combat] - Precision - Default Weapon Trail Replacer
+* [Combat] - SCAR
+* [Combat] - SCAR - Fix
+* [Combat] - For Honor in Skyrim BASE / Lawbringer / NobuShi
+* [Combat] - For Honor DODGE
+* [Combat] - Dodge Redux
+* [Combat] - Dodge Firelink
+* [Combat] - Power Attack Key NG
+* [Combat] - Dual Wield Parrying SKSE
+* [Combat] - Dual Wield Parrying - SKSE Menu Framework Integration
+* [Combat] - Maxsu Block Overhaul
+* [Combat] - Dynamic Block Hit
+* [Combat] - Moddern Stagger Lock Framework
+* [Combat] - Combat Pathing Revolution
+* [Combat] - Infinite Stamina Out of Combat
+* [Combat] - OmenRim 6 - Combat and Settings
+* [Skill] - Blade and Blunt - A Combat Overhaul
+* [Balance] - Blade and Blunt by omen
+
+-- Наборы анимаций (OAR / MCO / Vanilla Replacers):
+* [Anim] - Goetia Animations Magic Spell Casting
+* [Anim] - Goetia Animations Sneak Magic
+* [Anim] - Goetia Animations Alternate Movement For All Staves
+* [Anim] - Goetia Animations Enchanted Magic Staves
+* [Anim] - Slow Sprint Bug Fix
+* [Anim] - Offset Movement Animation Modders Resource
+* [Anim] - Organic Player Animations
+* [Anim] - Comprehensive First Person Animation Overhaul
+* [Anim] - Vanargand Animations (Archery, Crossbows, Sneak, Dual Wield, One Handed, Unarmed)
+* [Anim] - Leviathan Animations (Two-Handed High Stance, Normal/Power Attacks)
+* [Anim] - Firelink OAR Player Combat Animations
+* [Anim] - Firelink OAR NPC Combat Animations
+* [Anim] - Smooth Moveset - OAR
+================================================================================

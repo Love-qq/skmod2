@@ -1,0 +1,21 @@
+CastSprint DIAG BUILD v4 - инструкция по сборке
+
+В архиве 4 файла в папке src\. Скопируйте их в src\ проекта CastSprint
+(C:\Users\Nastya\.gemini\antigravity\scratch\CastSprint\src) с заменой:
+  src\Diagnostics.cpp
+  src\Diagnostics.h
+  src\Hooks.cpp
+  src\main.cpp
+Остальные файлы (Config, SprintPatch, MovementPatch, PCH.h, CMakeLists.txt) НЕ менять.
+
+Сборка (как раньше):
+  cmake --build build --config Release
+
+Если компилятор выдаст ошибки - пришлите их текст целиком, я исправлю.
+
+Упаковка: SKSE/Plugins/CastSprint.dll + CastSprint.ini, в zip с пробелами пути через "/" (не "\").
+
+Что делает v4: НИЧЕГО не меняет в геймплее (хуки спринта/движения не ставятся). Только пишет лог.
+Если игра с v4 вылетает или зависает: создайте пустой файл
+  Data\SKSE\Plugins\CastSprint_NoHW.txt
+(это отключает аппаратный наблюдатель за записью) и запустите снова.
