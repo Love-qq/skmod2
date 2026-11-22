@@ -1,0 +1,11 @@
+{
+  "name": "castsprint",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "simpleini",
+    "spdlog",
+    "xbyak",
+    "rapidcsv",
+    "nlohmann-json"
+  ]
+}

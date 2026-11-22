@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
-
 project(
     CastSprint
     VERSION 1.0.0
@@ -11,6 +9,7 @@ project(
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
 
 set(SKSE_SUPPORT_XBYAK ON CACHE BOOL "" FORCE)
 set(ENABLE_SKYRIM_SE ON CACHE BOOL "" FORCE)
@@ -18,7 +17,14 @@ set(ENABLE_SKYRIM_AE OFF CACHE BOOL "" FORCE)
 set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
-add_subdirectory("C:/dev/CommonLibSSE-NG" CommonLibSSE EXCLUDE_FROM_ALL)
+include(FetchContent)
+FetchContent_Declare(
+    CommonLibSSE
+    GIT_REPOSITORY https://github.com/CharmedBaryon/CommonLibSSE-NG
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(CommonLibSSE)
 
 find_package(SimpleIni CONFIG REQUIRED)
 
@@ -38,13 +44,9 @@ set(SOURCES
 
 add_library(CastSprint MODULE ${SOURCES})
 
-target_include_directories(CastSprint PRIVATE
-    src
-)
+target_include_directories(CastSprint PRIVATE src)
 
-target_precompile_headers(CastSprint PRIVATE
-    "C:/dev/CommonLibSSE-NG/include/SKSE/Impl/PCH.h"
-)
+target_precompile_headers(CastSprint PRIVATE src/PCH.h)
 
 target_link_libraries(CastSprint PRIVATE
     CommonLibSSE::CommonLibSSE
