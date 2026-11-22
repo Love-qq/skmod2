@@ -38,5 +38,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: CastSprint_v5
+          name: CastSprint_v6
           path: pkg/

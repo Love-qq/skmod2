@@ -343,10 +343,9 @@ namespace CastSprint::Diagnostics
         // and that also clears the sprint flag. Keep a snapshot of the NPCSprinting
         // movement type taken on the last non-cast frame while sprinting. During a cast,
         // if the type has been switched away from NPCSprinting, restore the snapshot and
-        // re-send sSprintStart once per cast.
+        // set the sprint bit back.
         using MovementTypeT = std::remove_cvref_t<decltype(std::declval<RE::HighProcessData&>().currentMovementType)>;
         std::optional<MovementTypeT> g_sprintSnapshot;
-        bool g_restartedThisCast = false;
         std::uint64_t g_fixRestores = 0;
 
         void ApplyCastSprintFix(RE::PlayerCharacter* p)
@@ -360,7 +359,6 @@ namespace CastSprint::Diagnostics
                                  CasterState(p, RE::MagicSystem::CastingSource::kRightHand) >= 1;
 
             if (!casting) {
-                g_restartedThisCast = false;
                 if (name == "NPCSprinting") {
                     g_sprintSnapshot = mt;
                 } else {
@@ -373,13 +371,15 @@ namespace CastSprint::Diagnostics
 
             mt = *g_sprintSnapshot;
             ++g_fixRestores;
-            logger::info("[Fix t={}ms] restored NPCSprinting during cast (was {}, restores={})",
-                         NowMs(), name, g_fixRestores);
 
-            if (!g_restartedThisCast) {
-                g_restartedThisCast = true;
-                const bool ok = p->NotifyAnimationGraph("sSprintStart");
-                logger::info("[Fix t={}ms] sent sSprintStart (ok={})", NowMs(), ok);
+            // v6: the engine clears the sprint bit (ActorState1 bit 0x100) together with the
+            // movement-type switch. Set it back while the restored sprint type is active.
+            auto* st = reinterpret_cast<std::uint32_t*>(&p->AsActorState()->actorState1);
+            const std::uint32_t before = *st;
+            *st |= 0x100u;
+            if (before != *st || g_fixRestores % 60 == 1) {
+                logger::info("[Fix t={}ms] restored NPCSprinting during cast (was {}, restores={}) state1 0x{:08X} -> 0x{:08X}",
+                             NowMs(), name, g_fixRestores, before, *st);
             }
         }
     }  // namespace
