@@ -47,15 +47,16 @@ namespace
         switch (a_msg->type) {
             case SKSE::MessagingInterface::kDataLoaded:
                 logger::info("========================================");
-                logger::info("DIAG BUILD v3");
+                logger::info("DIAG BUILD v4");
                 logger::info("========================================");
                 logger::info("[Main] kDataLoaded received – installing hooks.");
                 CastSprint::InstallHooks();
                 break;
 
+            case SKSE::MessagingInterface::kPreLoadGame:
             case SKSE::MessagingInterface::kPostLoadGame:
             case SKSE::MessagingInterface::kNewGame:
-                logger::info("[Main] Game loaded/started – registering AnimEvent sink once from main thread.");
+                logger::info("[Main] Load/new game message {} - animation sink will be (re)registered by the frame watcher.", static_cast<int>(a_msg->type));
                 CastSprint::Diagnostics::TryRegisterAnimEventSink();
                 break;
 
