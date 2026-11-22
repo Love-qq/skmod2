@@ -189,7 +189,8 @@ namespace CastSprint::Diagnostics
 
         bool IsKey(const std::string& t)
         {
-            return Contains(t, "print") || Contains(t, "Cast") || Contains(t, "ttack") || Contains(t, "Interrupt") ||
+            return Contains(t, "print") || Contains(t, "Cast") || Contains(t, "Jump") || Contains(t, "Roll") ||
+                   Contains(t, "Dodge") || Contains(t, "Sidestep") || Contains(t, "Fall") || Contains(t, "ttack") || Contains(t, "Interrupt") ||
                    Contains(t, "SpellFire") || Contains(t, "SpellReady") || Contains(t, "weaponDraw") ||
                    StartsWith(t, "MRh_") || StartsWith(t, "MLh_") || StartsWith(t, "Magic_");
         }
@@ -347,6 +348,7 @@ namespace CastSprint::Diagnostics
         using MovementTypeT = std::remove_cvref_t<decltype(std::declval<RE::HighProcessData&>().currentMovementType)>;
         std::optional<MovementTypeT> g_sprintSnapshot;
         std::uint64_t g_fixRestores = 0;
+        long long g_lastCastMs = -1000000;  // v8: last moment a hand was casting
 
         void ApplyCastSprintFix(RE::PlayerCharacter* p)
         {
@@ -355,17 +357,20 @@ namespace CastSprint::Diagnostics
             const char* cName = mt.typeName.c_str();
             const std::string name = cName ? cName : "";
 
-            // v7: NPCMagic is the state right after a cast ends; treat it as casting too,
-            // otherwise the snapshot is dropped and sprint is lost in that window.
-            const bool casting = CasterState(p, RE::MagicSystem::CastingSource::kLeftHand) >= 1 ||
-                                 CasterState(p, RE::MagicSystem::CastingSource::kRightHand) >= 1 ||
-                                 name == "NPCMagicCasting" || name == "NPCMagic";
+            // v8: restore only inside a short window after a real cast starts.
+            // NPCMagic is also the idle stance while a spell is equipped, so it must
+            // not by itself enable the sprint restore.
+            const bool castActive = CasterState(p, RE::MagicSystem::CastingSource::kLeftHand) >= 1 ||
+                                    CasterState(p, RE::MagicSystem::CastingSource::kRightHand) >= 1;
+            const long long now = NowMs();
+            if (castActive) g_lastCastMs = now;
+            const bool inCastWindow = castActive || (now - g_lastCastMs) < 2000;
 
-            if (!casting) {
+            if (!inCastWindow) {
                 if (name == "NPCSprinting") {
-                    g_sprintSnapshot = mt;
+                    g_sprintSnapshot = mt;   // last good sprint state
                 } else {
-                    g_sprintSnapshot.reset();   // not sprinting before this frame: nothing to restore
+                    g_sprintSnapshot.reset();
                 }
                 return;
             }
@@ -375,14 +380,13 @@ namespace CastSprint::Diagnostics
             mt = *g_sprintSnapshot;
             ++g_fixRestores;
 
-            // v6: the engine clears the sprint bit (ActorState1 bit 0x100) together with the
-            // movement-type switch. Set it back while the restored sprint type is active.
+            // Sprint bit (ActorState1 bit 0x100) is cleared by the engine together with the switch.
             auto* st = reinterpret_cast<std::uint32_t*>(&p->AsActorState()->actorState1);
             const std::uint32_t before = *st;
             *st |= 0x100u;
             if (before != *st || g_fixRestores % 60 == 1) {
-                logger::info("[Fix t={}ms] restored NPCSprinting during cast (was {}, restores={}) state1 0x{:08X} -> 0x{:08X}",
-                             NowMs(), name, g_fixRestores, before, *st);
+                logger::info("[Fix t={}ms] restored NPCSprinting in cast window (was {}, restores={}) state1 0x{:08X} -> 0x{:08X}",
+                             now, name, g_fixRestores, before, *st);
             }
         }
     }  // namespace
