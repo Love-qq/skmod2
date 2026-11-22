@@ -35,9 +35,8 @@ jobs:
           if (-not (Test-Path "$out/CastSprint.ini")) {
             Write-Host "No CastSprint.ini in repo, skipping"
           }
-          Compress-Archive -Path "pkg/SKSE" -DestinationPath "CastSprint_v5.zip" -Force
 
       - uses: actions/upload-artifact@v4
         with:
           name: CastSprint_v5
-          path: CastSprint_v5.zip
+          path: pkg/
